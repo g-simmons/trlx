@@ -68,6 +68,7 @@ def default_ilql_config():
             eval_interval=100,
             pipeline="PromptPipeline",
             trainer="AccelerateILQLTrainer",
+            checkpoint_dir="ckpts",
         ),
         model=ModelConfig(model_path="gpt2", num_layers_unfrozen=-1),
         tokenizer=TokenizerConfig(tokenizer_path="gpt2", truncation_side="right"),

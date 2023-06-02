@@ -256,7 +256,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
         input_ids = input_ids.to(self.accelerator.device)
         if attention_mask is not None:
             attention_mask = attention_mask.to(self.accelerator.device)
-        if self.generate_experience_kwargs is not None:
+        if hasattr(self, "generate_experience_kwargs"):
             kwargs = dict(self.generate_experience_kwargs, **kwargs)
         else:
             kwargs = dict(self.generate_kwargs, **kwargs)
@@ -425,9 +425,18 @@ class AccelerateRLTrainer(BaseRLTrainer):
                     metrics = self.metric_fn(samples=str_samples, prompts=str_prompts, outputs=str_outputs, **metadata)
                     stats["time/metric"] = time() - metric_time
 
-                    mean_metrics = {
-                        f"metrics/{k}{sweep_suffix}": torch.as_tensor(xs).mean(-1).item() for k, xs in metrics.items()
-                    }
+                    # mean_metrics = {
+                    #     f"metrics/{k}{sweep_suffix}": torch.as_tensor(xs).mean(-1).item() for k, xs in metrics.items()
+                    # }
+
+                    mean_metrics = {}
+
+                    for k, xs in metrics.items():
+                        try:
+                            mean_metrics[f"metrics/{k}{sweep_suffix}"] = torch.as_tensor(xs).mean(-1).item()
+                        except Exception:
+                            logger.warning(f"Metric {k} is not a scalar, skipping")
+                            continue
 
                     stats.update(mean_metrics)
 
