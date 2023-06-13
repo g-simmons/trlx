@@ -530,6 +530,8 @@ class AccelerateRLTrainer(BaseRLTrainer):
 
         best_reward = -float("inf")
 
+        self.model.train()
+
         # For each epoch
         for _ in range(self.config.train.epochs):
             # For each batch
