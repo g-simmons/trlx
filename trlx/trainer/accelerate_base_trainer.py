@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 import ray
 import torch
 from accelerate import Accelerator  # type: ignore
+from accelerate import DeepSpeedPlugin
 from ray.air import session
 from rich.console import Console
 from rich.table import Table
@@ -46,6 +47,10 @@ class AccelerateRLTrainer(BaseRLTrainer):
     """
 
     def __init__(self, config, **kwargs):  # noqa: C901
+        if "hf_ds_config" in kwargs:
+            hf_ds_config = kwargs.pop("hf_ds_config")
+        else:
+            hf_ds_config = None
         super().__init__(config, **kwargs)
         self.max_length = config.train.seq_length
         if config.train.minibatch_size:
@@ -55,7 +60,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
             self.mb_size = config.train.batch_size
         self.num_mb = config.train.batch_size // self.mb_size
         self.mb_count = 0
-        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir)
+        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir, deepspeed_plugin=DeepSpeedPlugin(hf_ds_config=hf_ds_config))
 
         if self.accelerator.state.deepspeed_plugin is not None:
             # by accelerate's default, arguments in `model.forward` would be casted to half
