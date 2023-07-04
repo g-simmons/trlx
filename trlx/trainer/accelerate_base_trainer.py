@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 import ray
 import torch
 from accelerate import Accelerator  # type: ignore
+from accelerate import DeepSpeedPlugin
 from ray.air import session
 from rich.console import Console
 from rich.table import Table
@@ -46,6 +47,10 @@ class AccelerateRLTrainer(BaseRLTrainer):
     """
 
     def __init__(self, config, **kwargs):  # noqa: C901
+        if "hf_ds_config" in kwargs:
+            hf_ds_config = kwargs.pop("hf_ds_config")
+        else:
+            hf_ds_config = None
         super().__init__(config, **kwargs)
         self.max_length = config.train.seq_length
         if config.train.minibatch_size:
@@ -55,7 +60,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
             self.mb_size = config.train.batch_size
         self.num_mb = config.train.batch_size // self.mb_size
         self.mb_count = 0
-        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir)
+        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir, deepspeed_plugin=DeepSpeedPlugin(hf_ds_config=hf_ds_config))
 
         if self.accelerator.state.deepspeed_plugin is not None:
             # by accelerate's default, arguments in `model.forward` would be casted to half
@@ -308,6 +313,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
     def save(self, directory: Optional[str] = None, **kwargs):
         """Creates a checkpoint of the optimizer, scheduler and model"""
         self.accelerator.save_state(directory or self.config.train.checkpoint_dir, **kwargs)
+        self.accelerator.unwrap_model(self.model).config.save_pretrained(directory or self.config.train.checkpoint_dir)
 
     def load(self, directory: Optional[str] = None, **kwargs):
         """Load checkpoint of optimizer, scheduler and a model"""
@@ -516,8 +522,9 @@ class AccelerateRLTrainer(BaseRLTrainer):
                         state = json.load(f)
                         self.iter_count = state["iter_count"]
         else:
-            results = self.evaluate()
-            self.accelerator.log(results, step=self.iter_count)
+            if self.config.train.eval_before_training:
+                results = self.evaluate()
+                self.accelerator.log(results, step=self.iter_count)
 
         tbar = logging.tqdm(
             initial=self.iter_count,

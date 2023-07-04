@@ -222,6 +222,8 @@ class TrainConfig:
     save_best: bool = True
     save_optimizer: bool = True
 
+    eval_before_training: bool = True 
+
     tracker: Optional[str] = "wandb"
     logging_dir: Optional[str] = None
     tags: Optional[List[str]] = field(default_factory=list)
