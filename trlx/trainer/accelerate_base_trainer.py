@@ -59,8 +59,9 @@ class AccelerateRLTrainer(BaseRLTrainer):
         self.num_mb = config.train.batch_size // self.mb_size
         self.mb_count = 0
         deepspeed_plugin = DeepSpeedPlugin(hf_ds_config=hf_ds_config)
-        gradient_accumulation_steps = deepspeed_plugin.deepspeed_config["gradient_accumulation_steps"]
-        self.accelerator = Accelerator(log_with=config.train.tracker, project_dir=config.train.logging_dir, deepspeed_plugin=deepspeed_plugin, gradient_accumulation_steps=gradient_accumulation_steps)
+        # gradient_accumulation_steps = deepspeed_plugin.deepspeed_config["gradient_accumulation_steps"]
+        # self.accelerator = Accelerator(log_with=config.train.tracker, project_dir=config.train.logging_dir, deepspeed_plugin=deepspeed_plugin, gradient_accumulation_steps=gradient_accumulation_steps)
+        self.accelerator = Accelerator(log_with=config.train.tracker, project_dir=config.train.logging_dir, deepspeed_plugin=deepspeed_plugin)
 
         if self.accelerator.state.deepspeed_plugin is not None:
             # by accelerate's default, arguments in `model.forward` would be casted to half
